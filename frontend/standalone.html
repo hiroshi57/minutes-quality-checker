@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>議事録チェッカー — 後で困る抜け漏れを見つける</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;background:#f5f6f8;margin:0;padding:24px;color:#1a1a2e}
+.wrap{max-width:920px;margin:0 auto} h1{font-size:23px;color:#6a4c93;margin-bottom:4px}
+h2{font-size:17px;margin:2px 0 8px} h3{font-size:14px;margin:12px 0 4px} .sub{color:#8a8f9c;font-size:12px}
+.card{background:#fff;border-radius:12px;padding:18px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.stepbadge{display:inline-block;background:#6a4c93;color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;margin-bottom:8px}
+.intro{background:#f2ecfb;border-radius:12px;padding:16px;font-size:14px;line-height:1.9}
+.intro .q{font-weight:bold;color:#6a4c93;font-size:15px;margin-top:12px}
+.intro .q:first-child{margin-top:0}
+.guide{background:#fffbeb;border:2px dashed #f0c86a;border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.8;color:#7a5b00}
+.guide b{color:#5c4400}
+table{border-collapse:collapse;width:100%;font-size:13.5px} th,td{border:1px solid #dde;padding:8px 6px;text-align:center} th{background:#f2ecfb;font-size:12.5px}
+td.l,th.l{text-align:left} tbody tr:nth-child(even){background:#fafbfd}
+td input,td select{border:1.5px solid #b9cbe4;border-radius:6px;padding:6px;font-size:14px}
+td input{width:78px;text-align:right} td input.nm{width:150px;text-align:left} td select{background:#fff}
+input.big,textarea{width:100%;border:1.5px solid #b9cbe4;border-radius:8px;padding:10px;font-size:14px;font-family:inherit}
+textarea{min-height:130px;line-height:1.7}
+.metrics{display:flex;gap:12px;flex-wrap:wrap} .metric{flex:1;min-width:145px;background:#f2ecfb;border-radius:10px;padding:14px;text-align:center}
+.metric .val{font-size:25px;font-weight:bold;color:#6a4c93} .metric .l{font-size:12px;color:#556;margin-top:4px;line-height:1.5}
+.verdict{border-radius:12px;padding:18px;margin:10px 0}
+.vgood{background:#e7f7ef;border:2px solid #17a673} .vmid{background:#fff8e6;border:2px solid #f0a500} .vbad{background:#fdeeee;border:2px solid #e0533b}
+.verdict .big{font-size:20px;font-weight:bold} .verdict .desc{font-size:14px;line-height:1.9;margin-top:8px}
+.todo{background:#f2ecfb;border:1px solid #d6e4f7;border-radius:10px;padding:14px;margin-top:10px}
+.todo li{margin:9px 0;line-height:1.8;font-size:14px}
+.chk{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #eef1f5;font-size:14px;line-height:1.7}
+.chk .mark{font-size:18px;flex-shrink:0;width:24px}
+button{border:0;border-radius:9px;cursor:pointer;font-size:14px;padding:10px 16px}
+button.go{background:#6a4c93;color:#fff;font-size:15px} button.add{background:#6a4c93;color:#fff;margin-top:10px}
+button.ghost{background:#eef2f8;color:#6a4c93;margin-left:8px;font-size:13px;padding:9px 14px}
+button.del{background:#f7e4e4;color:#c0392b;padding:4px 10px;font-size:15px}
+.src{background:#f7f9fb;border:1px solid #e0e6ec;border-left:4px solid #8a8f9c;border-radius:8px;padding:12px;font-size:13px;color:#445;line-height:1.9;margin:10px 0}
+.src b{color:#1a1a2e} .src div{margin:4px 0}
+.note{color:#8a8f9c;font-size:12px;line-height:1.7}
+.bar{background:#eef1f5;border-radius:7px;height:28px;overflow:hidden;margin:5px 0}
+.bar>div{height:28px;border-radius:7px;display:flex;align-items:center;justify-content:flex-end;padding-right:9px;color:#fff;font-size:13px;font-weight:bold}
+.pill{padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:bold;white-space:nowrap}
+pre{background:#f7f9fb;border:1px solid #e0e6ec;border-radius:8px;padding:12px;overflow-x:auto;font-size:12.5px;line-height:1.6}
+@media(max-width:640px){body{padding:12px} .wrap{max-width:100%} h1{font-size:19px}
+ table{display:block;overflow-x:auto;white-space:nowrap;font-size:12.5px} .metrics{flex-direction:column}}
+</style>
+</head>
+<body>
+<div style="max-width:900px;margin:0 auto 4px;background:#fff8e1;border:1px solid #f0d98a;border-radius:10px;padding:10px 14px;font:13.5px system-ui;color:#7a5b00">🔬 <b>入力するだけで計算します</b>：議事録を貼り付けると、<b>決定事項・担当・期限などの抜け漏れ</b>をその場で点検します。　AIサービスへの接続は不要で、計算はすべてこの画面の中で行われます。</div>
+<div id="root"></div>
+<script type="text/plain" id="__jsx">
+// ===== 自動保存 & データ書き出し/読み込み =====
+const STORE="minutes_v1";
+function usePersist(name,initial){
+  const [v,setV]=React.useState(function(){
+    try{var s=localStorage.getItem(STORE+":"+name);return s?JSON.parse(s):initial;}catch(e){return initial;}
+  });
+  React.useEffect(function(){try{localStorage.setItem(STORE+":"+name,JSON.stringify(v));}catch(e){}},[name,v]);
+  return [v,setV];
+}
+function collectAll(){var o={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);
+  if(k&&k.indexOf(STORE+":")===0){try{o[k.slice(STORE.length+1)]=JSON.parse(localStorage.getItem(k));}catch(e){}}}return o;}
+function DataBar(){
+  const [msg,setMsg]=React.useState(""); const fileRef=React.useRef(null);
+  const save=function(){try{
+      var blob=new Blob([JSON.stringify({_tool:STORE,_savedAt:new Date().toISOString(),data:collectAll()},null,2)],{type:"application/json"});
+      var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+      a.download=STORE+"_"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(a.href);
+      setMsg("書き出しました");setTimeout(function(){setMsg("");},2500);}catch(e){setMsg("書き出しに失敗しました");}};
+  const load=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var rd=new FileReader();
+    rd.onload=function(){try{var j=JSON.parse(rd.result);if(!j||!j.data)throw new Error("形式が違います");
+      Object.keys(j.data).forEach(function(k){localStorage.setItem(STORE+":"+k,JSON.stringify(j.data[k]));});
+      location.reload();}catch(err){setMsg("読み込めませんでした");}};rd.readAsText(f);};
+  const clear=function(){if(!confirm("入力した内容をすべて消して最初の状態に戻します。よろしいですか？"))return;
+    var del=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf(STORE+":")===0)del.push(k);}
+    del.forEach(function(k){localStorage.removeItem(k);});location.reload();};
+  return (<div style={{background:"#f2f7f4",border:"1px solid #cfe3d8",borderRadius:10,padding:"9px 12px",
+      margin:"0 0 12px",fontSize:13,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",color:"#0f5c3f"}}>
+    <span>💾 <b>入力した内容はこの端末に自動保存されます</b>（閉じても消えません）</span>
+    <span style={{flex:1}}></span>
+    <button onClick={save} style={{border:0,borderRadius:7,background:"#17a673",color:"#fff",padding:"6px 11px",cursor:"pointer",fontSize:12.5}}>データを書き出す</button>
+    <button onClick={function(){fileRef.current&&fileRef.current.click();}} style={{border:0,borderRadius:7,background:"#e7f0eb",color:"#0f5c3f",padding:"6px 11px",cursor:"pointer",fontSize:12.5}}>読み込む</button>
+    <button onClick={clear} style={{border:0,borderRadius:7,background:"#f7e4e4",color:"#c0392b",padding:"6px 11px",cursor:"pointer",fontSize:12.5}}>最初に戻す</button>
+    <input ref={fileRef} type="file" accept="application/json" onChange={load} style={{display:"none"}}/>
+    {msg && <span style={{fontWeight:"bold"}}>{msg}</span>}
+  </div>);
+}
+function Intro(){
+  return (<div className="card"><div className="intro">
+    <div className="q">🎯 このツールで分かること</div><div>議事録に「決まったこと」「誰が」「いつまでに」が書かれているかを点検します。書いた直後に直せるので、後から「言った言わない」が起きにくくなります。</div>
+    <div className="q">🙋 こんな人向け</div><div>・会議の議事録を<b>書く役割</b>の人（若手・アシスタント）<br/>・部下の議事録を<b>確認する</b>立場の人<br/>・議事録はあるのに<b>仕事が進まない</b>と感じているチーム</div>
+    <div className="q">📝 やること</div><div>下の欄に議事録を<b>貼り付けるだけ</b>です。整える前のメモでも構いません。</div>
+  </div></div>);
+}
+
+const SAMPLE=`【営業部 定例】2026年8月10日
+参加：田中、佐藤、鈴木、山田
+
+・今月の受注状況を共有した。目標比85%。
+・A社の提案は来週まとめる。
+・広告費の増額について検討が必要。
+・佐藤さんが競合調査をやることになった。
+・次回は8月17日。
+`;
+
+// 「良い議事録」に必要な要素を、書き方のパターンから検出する
+const RULES=[
+  {key:"date", label:"日付", why:"いつの会議か分からないと、後から探せません。",
+   test:t=>/(20\d{2}[年\/\-.]\s*\d{1,2}[月\/\-.]\s*\d{1,2}|\d{1,2}月\d{1,2}日)/.test(t),
+   fix:"冒頭に「2026年8月10日」のように日付を書く"},
+  {key:"member", label:"参加者", why:"誰が合意したのかが不明だと、後で「聞いていない」が起きます。",
+   test:t=>/(参加|出席|メンバー|参加者)[\s:：]/.test(t),
+   fix:"「参加：田中、佐藤」のように出席者を列挙する"},
+  {key:"decision", label:"決まったこと", why:"議事録の一番の価値は「決定事項」です。これが無いと会議が無駄になります。",
+   test:t=>/(決定|決まっ|承認|合意|することにした|とする|に決め)/.test(t),
+   fix:"「【決定】広告費を10万円増額する」のように、決定を明示する"},
+  {key:"todo", label:"やること(宿題)", why:"次のアクションが書かれていないと、誰も動きません。",
+   test:t=>/(TODO|ToDo|宿題|アクション|対応|やること|進める|まとめる|作成する|調査)/.test(t),
+   fix:"「【宿題】競合調査をまとめる」のように、やることを書き出す"},
+  {key:"owner", label:"担当者", why:"担当が空欄の仕事は、ほぼ実行されません。",
+   test:t=>/(担当|責任者|[一-龯ぁ-んァ-ン]{1,4}\s*(さん|氏)?\s*が)/.test(t),
+   fix:"やることごとに「担当：佐藤」を必ず付ける"},
+  {key:"due", label:"期限", why:"期限の無い宿題は、期限が来ないので終わりません。",
+   test:t=>/(まで|期限|締切|次回|来週|今週|月末|\d{1,2}\/\d{1,2}|\d{1,2}月\d{1,2}日)/.test(t),
+   fix:"「〜を8月17日までに」のように期日を書く"},
+  {key:"pending", label:"保留・持ち帰り", why:"決まらなかったことを書かないと、同じ議論を繰り返します。",
+   test:t=>/(保留|持ち帰|検討が必要|次回に|継続|未定|要確認)/.test(t),
+   fix:"「【保留】広告費増額（次回判断）」のように、決まらなかったことも残す"},
+  {key:"next", label:"次回の予定", why:"次がいつか書かれていないと、日程調整が毎回発生します。",
+   test:t=>/(次回|次の会議|次は)/.test(t),
+   fix:"末尾に「次回：8月17日 10:00」と書く"},
+];
+
+// 曖昧すぎて後から意味が取れない表現
+const VAGUE=["検討する","進める","確認する","対応する","調整する","なるべく","そのうち","追って","適宜","可能な限り"];
+
+function analyze(text){
+  const t=text||"";
+  const results=RULES.map(r=>({...r, ok:r.test(t)}));
+  const score=Math.round(results.filter(r=>r.ok).length/RULES.length*100);
+  const vague=VAGUE.filter(v=>t.includes(v));
+  const lines=t.split(/\n/).map(s=>s.trim()).filter(Boolean);
+  // 「やること」らしき行を抽出し、担当と期限が付いているかを行単位で判定
+  const actionLines=lines.filter(l=>/(する|やる|まとめ|作成|調査|検討|対応|依頼|確認)/.test(l)&&!/^[【\[]/.test(l));
+  const weakActions=actionLines.filter(l=>!/(担当|[一-龯ぁ-んァ-ン]{1,4}さん|[一-龯ぁ-んァ-ン]{1,4}が)/.test(l)||!/(まで|期限|次回|来週|今週|月末|\d{1,2}月\d{1,2}日|\d{1,2}\/\d{1,2})/.test(l));
+  return {results,score,vague,lines,actionLines,weakActions};
+}
+function level(s){return s>=85?["そのまま共有できます","#17a673","vgood"]:s>=60?["あと少し足りません","#f0a500","vmid"]:["このままだと後で困ります","#e0533b","vbad"];}
+
+function App(){
+  const [text,setText]=usePersist("text",SAMPLE);
+  const a=analyze(text);
+  const lv=level(a.score);
+  const missing=a.results.filter(r=>!r.ok);
+
+  return (<div className="wrap"><DataBar/>
+    <h1>議事録チェッカー</h1>
+    <div className="sub" style={{marginBottom:10}}>書いた議事録に「後で困る抜け漏れ」がないかを、その場で点検します。</div>
+    <Intro/>
+
+    <div className="card">
+      <div className="stepbadge">STEP 1</div>
+      <h2>議事録を貼り付けてください</h2>
+      <div className="guide">
+        👇 <b>ここに貼ってください。</b>入力すると、下の点検結果がすぐ変わります。<br/>
+        メモ書きのままで構いません。きれいに整える前にチェックするのが効果的です。
+      </div>
+      <textarea style={{marginTop:10}} value={text} onChange={e=>setText(e.target.value)} placeholder="議事録をここに貼り付け"/>
+      <div className="sub">{a.lines.length}行 ／ {(text||"").length}文字</div>
+      <div className="src">
+        <b>❓ 何をどう判定しているの？</b>
+        <div>・議事録に必要な<b>8つの要素</b>（日付・参加者・決定・宿題・担当・期限・保留・次回）が書かれているかを、<b>文章のパターンで検出</b>しています。</div>
+        <div>・AIサービスには送信していません。<b>すべてこの画面の中で処理</b>しているので、社外秘の議事録でも安全です。</div>
+        <div>・8要素は<b>当社が定めた基準</b>です（公的な標準ではありません）。</div>
+        <div>・最初に入っている文章は<b>使い方を示すための例</b>（架空の会議）です。</div>
+      </div>
+    </div>
+
+    <div className="card">
+      <div className="stepbadge">STEP 2</div>
+      <h2>点検結果</h2>
+      <div className={"verdict "+lv[2]}>
+        <div className="big">{a.score}点 / 100 — {lv[0]}</div>
+        <div className="desc">{missing.length===0
+          ? "必要な要素がすべて入っています。このまま共有して問題ありません。"
+          : <span>足りないのは <b>{missing.map(m=>m.label).join("・")}</b> です。下の指摘に沿って追記してください。</span>}</div>
+      </div>
+      <h3>8つの要素の入り方</h3>
+      {a.results.map((r,i)=>(<div className="chk" key={i}>
+        <span className="mark">{r.ok?"✅":"❌"}</span>
+        <span><b>{r.label}</b>{r.ok?"：書かれています":<span>：<b style={{color:"#c0392b"}}>ありません</b> — {r.why}<br/><span className="sub">直し方: {r.fix}</span></span>}</span>
+      </div>))}
+    </div>
+
+    <div className="card">
+      <div className="stepbadge">STEP 3</div>
+      <h2>後でもめやすい書き方</h2>
+      <h3>担当か期限が抜けている「やること」</h3>
+      {a.weakActions.length===0
+        ? <div className="verdict vgood"><div className="desc">✅ 「やること」には担当と期限が付いています。</div></div>
+        : <div>
+            <div className="sub">下の行は「やること」に見えますが、<b>担当か期限のどちらかが書かれていません</b>。この状態の仕事は実行されにくいです。</div>
+            <ul style={{fontSize:14,lineHeight:1.9}}>{a.weakActions.slice(0,6).map((l,i)=>(<li key={i}>
+              <span style={{background:"#fff4e0",padding:"2px 5px",borderRadius:4}}>{l.slice(0,60)}</span>
+              <br/><span className="sub">→ 「（担当：◯◯／◯月◯日まで）」を付け足してください</span></li>))}</ul>
+          </div>}
+      <h3>意味があいまいな言葉</h3>
+      {a.vague.length===0
+        ? <div className="sub">✅ あいまいな表現は見つかりませんでした。</div>
+        : <div>
+            <div className="sub">次の言葉は、読む人によって解釈が変わります。<b>「誰が」「いつまでに」「何を」</b>に言い換えてください。</div>
+            <div style={{marginTop:6}}>{a.vague.map((v,i)=>(<span key={i} className="pill" style={{background:"#fff4e0",color:"#8a6100",marginRight:6,display:"inline-block",marginBottom:5}}>{v}</span>))}</div>
+          </div>}
+      <div className="todo">
+        <b>そのまま使えるテンプレート</b>
+        <pre>{"日時：2026年8月10日 10:00-11:00\n参加：田中、佐藤、鈴木\n\n【決定】\n・広告費を月10万円増額する\n\n【やること】\n・A社への提案書作成（担当：田中／8月17日まで）\n・競合調査のまとめ（担当：佐藤／8月20日まで）\n\n【保留】\n・新ツール導入（次回、見積もりを見て判断）\n\n次回：8月17日 10:00"}</pre>
+      </div>
+    </div>
+
+    <p className="note">※判定は文章のパターン（キーワードと書き方）による自動検出です。文脈までは読めないため、<b>書かれているのに検出できない</b>／<b>関係ない語に反応する</b>ことがあります。最終判断はご自身で行ってください。<br/>
+    ※入力内容は外部に送信されず、この端末の中だけで処理・保存されます。</p>
+  </div>);
+}
+
+</script>
+<script>(function(){var src=document.getElementById("__jsx").textContent;var out=Babel.transform(src,{presets:[["react",{runtime:"classic"}]]}).code;(0,eval)(out);ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));})();</script>
+</body></html>
